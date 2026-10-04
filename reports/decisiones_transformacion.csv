@@ -1,0 +1,18 @@
+﻿tabla,columna,problema,registros_afectados,accion,justificacion
+logistica,Unnamed: 13,"Columna sin nombre con una fórmula residual de Excel (=AI(""""))",1,Eliminar columna,"No pertenece al modelo de datos; 99,998% nula"
+logistica,(fila completa),Filas completamente duplicadas,99,drop_duplicates(),Un evento no puede registrarse dos veces con el mismo contenido
+logistica,evento_id,evento_id repetido con contenido diferente,1,Conservar la fila con menos nulos,evento_id debe ser único; la fila más completa es la más confiable
+logistica,"fecha_evento, fecha_prometida_entrega",Fechas leídas como texto,49900,Convertir a datetime,Permite cálculos de tiempo y rangos
+logistica,ciudad_destino,Nulo accidental (el atributo existe en otros eventos del mismo pedido),45,Imputar con el valor del mismo pedido_id,El destino es único por pedido (verificado: 0 pedidos con valores distintos)
+logistica,centro_logistico,Nulo accidental (el atributo existe en otros eventos del mismo pedido),89,Imputar con el valor del mismo pedido_id,El CEDI es único por pedido (verificado: 0 pedidos con valores distintos)
+logistica,fecha_prometida_entrega,Nulo accidental (el atributo existe en otros eventos del mismo pedido),55,Imputar con el valor del mismo pedido_id,La fecha prometida es única por pedido (verificado: 0 pedidos con valores distintos)
+logistica,transportadora,Nulo en estado posterior al despacho (debería existir),80,Imputar con el valor del mismo pedido,Una guía/transportadora se asigna una sola vez por pedido
+logistica,transportadora,Nulo antes del despacho (comportamiento normal del proceso),29944,Mantener nulo,Aún no hay transportadora/guía asignada; imputar crearía información falsa
+logistica,numero_guia,Nulo en estado posterior al despacho (debería existir),60,Imputar con el valor del mismo pedido,Una guía/transportadora se asigna una sola vez por pedido
+logistica,numero_guia,Nulo antes del despacho (comportamiento normal del proceso),29944,Mantener nulo,Aún no hay transportadora/guía asignada; imputar crearía información falsa
+logistica,fecha_evento,Fecha del evento nula,65,fecha = fecha del evento anterior + tiempo_etapa_horas (o siguiente - su tiempo),tiempo_etapa_horas es el tiempo desde el evento anterior; es mejor que usar media/mediana de fechas
+logistica,tiempo_etapa_horas,Nulo en 'Pedido recibido' (no existe etapa anterior),4991,Mantener nulo,Nulo con interpretación válida: se mide el tiempo entre etapas
+logistica,incidencia,Nulo = el evento no tuvo novedad,49389,Reemplazar por 'SIN INCIDENCIA',Categoría explícita para poder contar/filtrar eventos sin novedad
+logistica,observacion,Nulo = el evento no tuvo novedad,48183,Reemplazar por 'SIN OBSERVACIÓN',Categoría explícita para poder contar/filtrar eventos sin novedad
+logistica,fecha_prometida_entrega,Eventos posteriores a la fecha prometida,1299,Solo se documenta (no se corrige),"Es un retraso real del negocio, no un error de captura"
+gold,pedido_id,Ventas no disponibles: Gold generado solo con resumen logístico,5000,Resumen por pedido sin cruce,Se completa al ejecutar con acceso a MySQL

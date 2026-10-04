@@ -1,0 +1,8 @@
+pandas>=2.0
+openpyxl
+mysql-connector-python
+PyYAML
+schedule
+matplotlib
+seaborn
+jupyter

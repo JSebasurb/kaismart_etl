@@ -1,0 +1,31 @@
+# ===== Laboratorio ETL - Kaismart Solutions S.A.S. =====
+autores:
+  - "NOMBRE APELLIDO 1"   # <- reemplazar por los nombres reales del equipo
+  - "NOMBRE APELLIDO 2"
+curso: "Laboratorio práctico de ETL - UAO"
+
+mysql:
+  host: "107.180.112.11"
+  user: "admin"
+  password: "adminuao2026"   # también se puede sobreescribir con la variable de entorno KAISMART_DB_PASSWORD
+  database: "clientes"
+  tabla: "ventas"
+  port: 3306
+
+excel:
+  ruta: "data/kaismart_eventos_logisticos.xlsx"
+  hoja: "eventos_logisticos"
+
+# Plan B opcional (solo si no hay acceso a MySQL): CSV con la tabla ventas exportada
+ventas_csv_respaldo: null
+
+rutas:
+  bronze: "data/bronze"
+  silver: "data/silver"
+  gold: "data/gold"
+  reportes: "reports"
+  logs: "logs"
+
+scheduler:
+  hora_diaria: "02:00"     # ejecución automática diaria
+  ejecutar_al_iniciar: true
