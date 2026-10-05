@@ -14,6 +14,36 @@ Las fuentes de información corresponden a:
 El proceso permite analizar inicialmente la estructura y calidad de cada fuente, identificar problemas en los datos y posteriormente generar conjuntos de datos depurados e integrados para su análisis.
 
 ---
+# Laboratorio ETL – Kaismart Solutions S.A.S. (UAO)
+
+**Autor:** Juan Sebastián Sánchez Urbano · juan_s.sanchez_u@uao.edu.co · Maestría en Ciencia de Datos e IA
+
+Arquitectura **Medallion**: Bronze (crudo) → Silver (limpio) → Gold (integrado por pedido).
+
+## Estructura
+```
+config.yaml            # autores, credenciales MySQL, rutas, hora del scheduler
+scheduler.py           # PARTE 8: orquestador con la librería schedule
+etl/                   # extract.py, profiling.py (EDA), transform.py (Silver/Gold), pipeline.py
+notebooks/laboratorio_etl.ipynb  
+data/                  # Excel fuente + bronze/ silver/ gold/ (se generan al ejecutar)
+reports/decisiones_transformacion.csv   # cada decisión de limpieza explicada
+```
+
+## Cómo ejecutar
+```bash
+pip install -r requirements.txt
+jupyter notebook notebooks/laboratorio_etl.ipynb    # Run All
+python scheduler.py --una-vez                        # ETL completo una vez
+python scheduler.py                                  # ETL automático diario
+```
+Opcional: `KAISMART_DB_PASSWORD` sobreescribe la contraseña de `config.yaml`.
+
+## Estado de las capas Medallion incluidas en el zip
+`data/bronze`, `data/silver` y `data/gold` ya vienen pobladas (ventas + logística + Gold integrado).
+`data/respaldo/ventas_mysql_export.csv` es una exportación de la tabla `ventas`: el pipeline intenta primero MySQL y,
+solo si no hay conexión, usa ese archivo (configurable en `config.yaml -> ventas_csv_respaldo`).
+Al ejecutar con acceso a MySQL, todas las capas se regeneran con la extracción en vivo.
 
 ## 🎯 Objetivo
 
@@ -567,44 +597,3 @@ Este proyecto se desarrolla con base en el **Laboratorio Práctico de ETL — Ka
 El laboratorio establece como alcance la extracción, exploración, evaluación de calidad, transformación e integración de las fuentes mediante metodología Medallion, además de la automatización del proceso ETL.
 
 ---
-
-## 👨‍💻 Autor
-
-**Juan Sebastián Sánchez Urbano**
-
-Proyecto académico — Laboratorio Práctico de ETL
-
----
-
-## 📄 Licencia
-
-Este repositorio corresponde a un proyecto académico y se encuentra destinado principalmente para fines educativos.
-
-# Laboratorio ETL – Kaismart Solutions S.A.S. (UAO)
-
-Arquitectura **Medallion**: Bronze (crudo) → Silver (limpio) → Gold (integrado por pedido).
-
-## Estructura
-```
-config.yaml            # autores, credenciales MySQL, rutas, hora del scheduler
-scheduler.py           # PARTE 8: orquestador con la librería schedule
-etl/                   # extract.py, profiling.py (EDA), transform.py (Silver/Gold), pipeline.py
-notebooks/laboratorio_etl.ipynb   # Partes 1-8 + conclusiones (ENTREGABLE PRINCIPAL)
-data/                  # Excel fuente + bronze/ silver/ gold/ (se generan al ejecutar)
-reports/decisiones_transformacion.csv   # cada decisión de limpieza explicada
-```
-
-## Cómo ejecutar
-```bash
-pip install -r requirements.txt
-jupyter notebook notebooks/laboratorio_etl.ipynb    # Run All
-python scheduler.py --una-vez                        # ETL completo una vez
-python scheduler.py                                  # ETL automático diario
-```
-Opcional: `KAISMART_DB_PASSWORD` sobreescribe la contraseña de `config.yaml`.
-
-## Estado de las capas Medallion incluidas en el zip
-`data/bronze`, `data/silver` y `data/gold` ya traen los archivos de **logística** (generados con el Excel real).
-Los archivos de **ventas** (`ventas_raw.csv`, `ventas_silver.csv`) y el Gold integrado ventas+logística se crean al ejecutar
-el notebook o `python scheduler.py --una-vez` con acceso a MySQL (el Gold actual solo tiene el resumen logístico por pedido).
->>>>>>> 67dee0c (primer commit)
