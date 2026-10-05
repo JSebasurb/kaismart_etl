@@ -78,7 +78,8 @@ def _estandarizar_categoria(df, col, tabla, dec, canon=None):
 
 
 # =====================  SILVER LOGÍSTICA  =====================
-def silver_logistica(bronze: pd.DataFrame, dec: Decisiones) -> pd.DataFrame:
+def silver_logistica(bronze: pd.DataFrame, dec: Decisiones, fechas_venta: pd.Series = None) -> pd.DataFrame:
+    """fechas_venta: Serie opcional indexada por pedido_id con fecha_venta (cruce entre fuentes)."""
     t = "logistica"
     df = bronze.copy()
 
@@ -145,8 +146,13 @@ def silver_logistica(bronze: pd.DataFrame, dec: Decisiones) -> pd.DataFrame:
         dec.add(t, c, "Nulo antes del despacho (comportamiento normal del proceso)", previos,
                 "Mantener nulo", "Aún no hay transportadora/guía asignada; imputar crearía información falsa")
 
-    # 5. fecha_evento: reconstruir con fecha_anterior + tiempo_etapa_horas
+    # 5. fecha_evento: (a) 'Pedido recibido' = fecha_venta (cruce con ventas), (b) resto = anterior + tiempo_etapa_horas
     faltan0 = int(df["fecha_evento"].isna().sum())
+    if fechas_venta is not None:
+        k = df["fecha_evento"].isna() & df["estado_evento"].eq("Pedido recibido")
+        df.loc[k, "fecha_evento"] = df.loc[k, "pedido_id"].map(pd.to_datetime(fechas_venta))
+        dec.add(t, "fecha_evento", "Fecha nula en 'Pedido recibido'", int(k.sum()) - int(df.loc[k, "fecha_evento"].isna().sum()),
+                "Usar fecha_venta del mismo pedido (ventas)", "El evento inicial coincide con el momento de la venta (verificado en los datos completos)")
     g = df.groupby("pedido_id")
     for _ in range(5):
         td = pd.to_timedelta(df["tiempo_etapa_horas"], unit="h")
@@ -155,9 +161,14 @@ def silver_logistica(bronze: pd.DataFrame, dec: Decisiones) -> pd.DataFrame:
         df["fecha_evento"] = df["fecha_evento"].fillna(prev).fillna(sig)
         if df["fecha_evento"].isna().sum() == 0:
             break
-    dec.add(t, "fecha_evento", "Fecha del evento nula", faltan0 - df["fecha_evento"].isna().sum(),
+    dec.add(t, "fecha_evento", "Fecha del evento nula (total recuperadas)", faltan0 - df["fecha_evento"].isna().sum(),
             "fecha = fecha del evento anterior + tiempo_etapa_horas (o siguiente - su tiempo)",
             "tiempo_etapa_horas es el tiempo desde el evento anterior; es mejor que usar media/mediana de fechas")
+
+    # validación: dentro de cada pedido las fechas no pueden retroceder
+    retro = int((df.groupby("pedido_id")["fecha_evento"].diff().dt.total_seconds() < -60).sum())
+    dec.add(t, "fecha_evento", "Eventos con fecha anterior al evento previo (>1 min)", retro,
+            "Solo se documenta", "Validación de coherencia temporal tras reconstruir fechas")
 
     # 6. tiempo_etapa_horas nulo = primer evento ('Pedido recibido'): no hay etapa previa
     es_primero = df["estado_evento"].eq("Pedido recibido")
@@ -232,7 +243,7 @@ def silver_ventas(bronze: pd.DataFrame, dec: Decisiones) -> pd.DataFrame:
     # categorías
     if "ciudad" in df.columns:
         df = _estandarizar_categoria(df, "ciudad", t, dec, canon=CIUDADES)
-    cat_cols = [c for c in df.select_dtypes(include="object").columns
+    cat_cols = [c for c in df.select_dtypes(include=["object", "string"]).columns
                 if not (c.startswith("id_") or c.endswith("_id") or "fecha" in c) and df[c].nunique() <= 60]
     for c in cat_cols:
         if c != "ciudad":
@@ -286,6 +297,17 @@ def silver_ventas(bronze: pd.DataFrame, dec: Decisiones) -> pd.DataFrame:
         dec.add(t, "valor_bruto", "valor_bruto != cantidad*precio_unitario", int(df["flag_bruto_inconsistente"].sum()),
                 "Marcar con flag_bruto_inconsistente (sin corregir)", "Requiere validación con el área comercial")
 
+    # id_tienda: solo existe en ventas de 'Tienda física' (nulo estructural en canales digitales)
+    if has("id_tienda", "canal"):
+        dig = df["id_tienda"].isna() & df["canal"].ne("Tienda física")
+        df.loc[dig, "id_tienda"] = "NO APLICA"
+        dec.add(t, "id_tienda", "Nulo en canales digitales (web / app): no hay tienda asociada", int(dig.sum()),
+                "Reemplazar por 'NO APLICA'", "El nulo es estructural; se rotula para poder agrupar y filtrar")
+        fis = df["id_tienda"].isna()
+        df.loc[fis, "id_tienda"] = "NO INFORMADO"
+        dec.add(t, "id_tienda", "Nulo en ventas de Tienda física (debería existir)", int(fis.sum()),
+                "Reemplazar por 'NO INFORMADO'", "No se inventa la tienda")
+
     # nulos restantes: numéricas -> mediana (sesgo por atípicos) ; categóricas -> NO INFORMADO
     for c in df.columns:
         if df[c].isna().any() and not c.startswith(("id_", "flag_")) and not c.endswith("_id") and "fecha" not in c:
@@ -333,8 +355,25 @@ def gold_pedidos(ventas_s: pd.DataFrame, logistica_s: pd.DataFrame, dec: Decisio
         dec.add("gold", "pedido_id", "Ventas no disponibles: Gold generado solo con resumen logístico", len(agg),
                 "Resumen por pedido sin cruce", "Se completa al ejecutar con acceso a MySQL")
         return agg
-    gold = ventas_s.merge(agg, on="pedido_id", how="outer", indicator="_origen")
+    gold = ventas_s.merge(agg, on="pedido_id", how="outer", indicator="_origen", validate="one_to_one")
     huerfanos = gold["_origen"].value_counts().to_dict()
     dec.add("gold", "pedido_id", f"Cruce ventas-logística: {huerfanos}", int((gold['_origen'] != 'both').sum()),
             "Outer join para conservar y medir pedidos sin contraparte", "Pedidos sin match indican problemas de integración")
-    return gold.drop(columns="_origen")
+    gold = gold.drop(columns="_origen")
+
+    # validaciones cruzadas entre fuentes (se documentan, no se corrigen)
+    dif_ciudad = int((gold["ciudad"].notna() & gold["ciudad_destino"].notna() & (gold["ciudad"] != gold["ciudad_destino"])).sum())
+    dec.add("gold", "ciudad vs ciudad_destino", "Ciudad de la venta distinta a la ciudad de destino logístico", dif_ciudad,
+            "Solo se documenta", "0 = las dos fuentes son coherentes entre sí")
+    dif_fecha = int(((pd.to_datetime(gold["fecha_venta"]) - gold["fecha_primer_evento"]).abs().dt.total_seconds() > 120).sum())
+    dec.add("gold", "fecha_venta vs fecha_primer_evento", "Venta y primer evento difieren >2 min (pedidos sin el evento 'Pedido recibido')", dif_fecha,
+            "Solo se documenta", "El primer evento logístico debería coincidir con la venta")
+    sin_ent = int((~gold["entregado"].fillna(False)).sum())
+    dec.add("gold", "estado_final", "Pedidos sin evento 'Entregado'", sin_ent, "Se conservan (entregado=False)",
+            "Pueden ser pedidos en curso o eventos perdidos; no se descartan")
+
+    # indicadores derivados
+    gold["valor_neto_mas_envio"] = gold["valor_neto"] + gold["costo_envio"]
+    gold["pct_envio_sobre_neto"] = (gold["costo_envio"] / gold["valor_neto"] * 100).round(2)
+    gold["mes_venta"] = pd.to_datetime(gold["fecha_venta"]).dt.to_period("M").astype(str)
+    return gold

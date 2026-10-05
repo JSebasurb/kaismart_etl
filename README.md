@@ -1,3 +1,27 @@
+# Laboratorio ETL – Kaismart Solutions S.A.S. (UAO)
+
+**Autor:** Juan Sebastián Sánchez Urbano · juan_s.sanchez_u@uao.edu.co · Maestría en Ciencia de Datos e IA
+
+Arquitectura **Medallion**: Bronze (crudo) → Silver (limpio) → Gold (integrado por pedido).
+
+## Estructura
+```
+config.yaml            # autores, credenciales MySQL, rutas, hora del scheduler
+scheduler.py           # PARTE 8: orquestador con la librería schedule
+etl/                   # extract.py, profiling.py (EDA), transform.py (Silver/Gold), pipeline.py
+notebooks/laboratorio_etl.ipynb   # Partes 1-8 + conclusiones (ENTREGABLE PRINCIPAL)
+data/                  # Excel fuente + bronze/ silver/ gold/ (se generan al ejecutar)
+reports/decisiones_transformacion.csv   # cada decisión de limpieza explicada
+```
+
+## Cómo ejecutar
+```bash
+pip install -r requirements.txt
+jupyter notebook notebooks/laboratorio_etl.ipynb    # Run All
+python scheduler.py --una-vez                        # ETL completo una vez
+python scheduler.py                                  # ETL automático diario
+```
+
 # Laboratorio Práctico de ETL — Kaismart Solutions
 
 ## 📌 Descripción
@@ -559,41 +583,5 @@ Al finalizar el laboratorio se espera contar con:
 * Respuestas a 10 preguntas de negocio.
 * Pipeline ETL automatizado.
 * Conclusiones sobre los principales hallazgos encontrados.
-
----
-
-## 📌 Hallazgos
-
-Esta sección será actualizada después de ejecutar el proceso completo de EDA y transformación.
-
-Se documentarán como mínimo:
-
-### Ventas
-
-* Hallazgo 1.
-* Hallazgo 2.
-* Hallazgo 3.
-* Hallazgo 4.
-* Hallazgo 5.
-
-### Logística
-
-* Hallazgo 1.
-* Hallazgo 2.
-* Hallazgo 3.
-* Hallazgo 4.
-* Hallazgo 5.
-
-### Transformación
-
-Se documentarán los principales cambios realizados sobre los datos y la justificación de las decisiones tomadas.
-
----
-
-## 📚 Fuente del laboratorio
-
-Este proyecto se desarrolla con base en el **Laboratorio Práctico de ETL — Kaismart Solutions S.A.S.**
-
-El laboratorio establece como alcance la extracción, exploración, evaluación de calidad, transformación e integración de las fuentes mediante metodología Medallion, además de la automatización del proceso ETL.
 
 ---

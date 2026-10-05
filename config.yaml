@@ -1,9 +1,10 @@
 # ===== Laboratorio ETL - Kaismart Solutions S.A.S. =====
 autores:
-   - Juan Sebastián Sánchez Urbano
-curso: "Laboratorio práctico de ETL - UAO"
+  - "Juan Sebastián Sánchez Urbano"   # juan_s.sanchez_u@uao.edu.co
+  # - "Agregar aquí a los demás integrantes del equipo"
 correo_contacto: "juan_s.sanchez_u@uao.edu.co"
 programa: "Maestría en Ciencia de Datos e Inteligencia Artificial - UAO"
+curso: "Laboratorio práctico de ETL - UAO"
 
 mysql:
   host: "107.180.112.11"
@@ -17,7 +18,7 @@ excel:
   ruta: "data/kaismart_eventos_logisticos.xlsx"
   hoja: "eventos_logisticos"
 
-# Plan B opcional (solo si no hay acceso a MySQL)
+# Plan B opcional (solo si no hay acceso a MySQL): CSV con la tabla ventas exportada
 ventas_csv_respaldo: "data/respaldo/ventas_mysql_export.csv"
 
 rutas:

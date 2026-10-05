@@ -24,7 +24,9 @@ def ejecutar_pipeline(cfg=None):
     # SILVER
     dec = Decisiones()
     df_ventas_transformado = silver_ventas(df_ventas, dec) if df_ventas is not None else None
-    df_logistica_transformado = silver_logistica(df_logistica, dec)
+    fechas_venta = (df_ventas_transformado.set_index("pedido_id")["fecha_venta"]
+                    if df_ventas_transformado is not None and "fecha_venta" in df_ventas_transformado else None)
+    df_logistica_transformado = silver_logistica(df_logistica, dec, fechas_venta)
     if df_ventas_transformado is not None:
         df_ventas_transformado.to_csv(ruta(cfg, "silver", "ventas_silver.csv"), index=False)
     df_logistica_transformado.to_csv(ruta(cfg, "silver", "logistica_silver.csv"), index=False)

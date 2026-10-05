@@ -1,4 +1,7 @@
 ﻿tabla,columna,problema,registros_afectados,accion,justificacion
+ventas,fecha_venta,Fecha como texto/objeto,5000,Convertir a datetime (inválidas -> NaT),Permite filtrar y calcular periodos
+ventas,id_tienda,Nulo en canales digitales (web / app): no hay tienda asociada,3501,Reemplazar por 'NO APLICA',El nulo es estructural; se rotula para poder agrupar y filtrar
+ventas,calificacion_cliente,Nulo: el cliente no calificó,2172,Mantener nulo,Ausencia de calificación es información válida; imputar sesgaría la satisfacción
 logistica,Unnamed: 13,"Columna sin nombre con una fórmula residual de Excel (=AI(""""))",1,Eliminar columna,"No pertenece al modelo de datos; 99,998% nula"
 logistica,(fila completa),Filas completamente duplicadas,99,drop_duplicates(),Un evento no puede registrarse dos veces con el mismo contenido
 logistica,evento_id,evento_id repetido con contenido diferente,1,Conservar la fila con menos nulos,evento_id debe ser único; la fila más completa es la más confiable
@@ -10,9 +13,11 @@ logistica,transportadora,Nulo en estado posterior al despacho (debería existir)
 logistica,transportadora,Nulo antes del despacho (comportamiento normal del proceso),29944,Mantener nulo,Aún no hay transportadora/guía asignada; imputar crearía información falsa
 logistica,numero_guia,Nulo en estado posterior al despacho (debería existir),60,Imputar con el valor del mismo pedido,Una guía/transportadora se asigna una sola vez por pedido
 logistica,numero_guia,Nulo antes del despacho (comportamiento normal del proceso),29944,Mantener nulo,Aún no hay transportadora/guía asignada; imputar crearía información falsa
-logistica,fecha_evento,Fecha del evento nula,65,fecha = fecha del evento anterior + tiempo_etapa_horas (o siguiente - su tiempo),tiempo_etapa_horas es el tiempo desde el evento anterior; es mejor que usar media/mediana de fechas
+logistica,fecha_evento,Fecha nula en 'Pedido recibido',10,Usar fecha_venta del mismo pedido (ventas),El evento inicial coincide con el momento de la venta (verificado en los datos completos)
+logistica,fecha_evento,Fecha del evento nula (total recuperadas),65,fecha = fecha del evento anterior + tiempo_etapa_horas (o siguiente - su tiempo),tiempo_etapa_horas es el tiempo desde el evento anterior; es mejor que usar media/mediana de fechas
 logistica,tiempo_etapa_horas,Nulo en 'Pedido recibido' (no existe etapa anterior),4991,Mantener nulo,Nulo con interpretación válida: se mide el tiempo entre etapas
 logistica,incidencia,Nulo = el evento no tuvo novedad,49389,Reemplazar por 'SIN INCIDENCIA',Categoría explícita para poder contar/filtrar eventos sin novedad
 logistica,observacion,Nulo = el evento no tuvo novedad,48183,Reemplazar por 'SIN OBSERVACIÓN',Categoría explícita para poder contar/filtrar eventos sin novedad
 logistica,fecha_prometida_entrega,Eventos posteriores a la fecha prometida,1299,Solo se documenta (no se corrige),"Es un retraso real del negocio, no un error de captura"
-gold,pedido_id,Ventas no disponibles: Gold generado solo con resumen logístico,5000,Resumen por pedido sin cruce,Se completa al ejecutar con acceso a MySQL
+gold,fecha_venta vs fecha_primer_evento,Venta y primer evento difieren >2 min (pedidos sin el evento 'Pedido recibido'),9,Solo se documenta,El primer evento logístico debería coincidir con la venta
+gold,estado_final,Pedidos sin evento 'Entregado',10,Se conservan (entregado=False),Pueden ser pedidos en curso o eventos perdidos; no se descartan
