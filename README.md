@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # kaismart_etl
 =======
 # Laboratorio ETL – Kaismart Solutions S.A.S. (UAO)
