@@ -4,100 +4,7 @@
 
 Arquitectura **Medallion**: Bronze (crudo) → Silver (limpio) → Gold (integrado por pedido).
 
-## Estructura
-```
-config.yaml            # autores, credenciales MySQL, rutas, hora del scheduler
-scheduler.py           # PARTE 8: orquestador con la librería schedule
-etl/                   # extract.py, profiling.py (EDA), transform.py (Silver/Gold), pipeline.py
-notebooks/laboratorio_etl.ipynb   # Partes 1-8 + conclusiones (ENTREGABLE PRINCIPAL)
-data/                  # Excel fuente + bronze/ silver/ gold/ (se generan al ejecutar)
-reports/decisiones_transformacion.csv   # cada decisión de limpieza explicada
-```
 
-## Cómo ejecutar
-```bash
-pip install -r requirements.txt
-jupyter notebook notebooks/laboratorio_etl.ipynb    # Run All
-python scheduler.py --una-vez                        # ETL completo una vez
-python scheduler.py                                  # ETL automático diario
-```
-
-# Laboratorio Práctico de ETL — Kaismart Solutions
-
-## 📌 Descripción
-
-Este repositorio contiene el desarrollo del **Laboratorio Práctico de ETL**, realizado en Python sobre información comercial y logística de **Kaismart Solutions S.A.S.**
-
-El proyecto tiene como propósito desarrollar un proceso de **extracción, exploración, evaluación de calidad, transformación e integración de datos**, utilizando la metodología **Medallion Architecture**, con las capas **Bronze, Silver y Gold**.
-
-Las fuentes de información corresponden a:
-
-* Una base de datos **MySQL** con información de ventas.
-* Un archivo **Excel** con eventos logísticos.
-
-El proceso permite analizar inicialmente la estructura y calidad de cada fuente, identificar problemas en los datos y posteriormente generar conjuntos de datos depurados e integrados para su análisis.
-
----
-
-
-## Estado de las capas Medallion incluidas en el zip
-`data/bronze`, `data/silver` y `data/gold` ya vienen pobladas (ventas + logística + Gold integrado).
-`data/respaldo/ventas_mysql_export.csv` es una exportación de la tabla `ventas`: el pipeline intenta primero MySQL y,
-solo si no hay conexión, usa ese archivo (configurable en `config.yaml -> ventas_csv_respaldo`).
-Al ejecutar con acceso a MySQL, todas las capas se regeneran con la extracción en vivo.
-
-## 🎯 Objetivo
-
-Desarrollar en Python un proceso ETL que permita:
-
-* Extraer información desde una base de datos MySQL.
-* Extraer información desde un archivo Excel.
-* Convertir las fuentes en DataFrames de pandas.
-* Realizar una exploración inicial de los datasets.
-* Evaluar la calidad de los datos.
-* Identificar valores nulos, duplicados, cardinalidad y tipos de datos.
-* Realizar análisis estadístico y descriptivo.
-* Formular y responder preguntas de negocio.
-* Limpiar y transformar los datos.
-* Integrar la información comercial y logística.
-* Implementar una arquitectura Medallion.
-* Automatizar el pipeline ETL utilizando `Schedule`.
-
----
-
-## 🏢 Contexto del proyecto
-
-**Kaismart Solutions S.A.S.** es una empresa dedicada a la comercialización de productos de tecnología, hogar, oficina, electrodomésticos y deportes en diferentes ciudades de Colombia.
-
-La empresa comercializa sus productos mediante diferentes canales, entre ellos tiendas físicas, página web y aplicación móvil.
-
-La información utilizada en este laboratorio se encuentra distribuida en dos fuentes independientes:
-
-### Fuente comercial
-
-La información de ventas se encuentra almacenada en una base de datos relacional **MySQL**, específicamente en la base de datos `clientes` y la tabla `ventas`.
-
-Esta fuente contiene aproximadamente **5.000 registros de ventas**.
-
-### Fuente logística
-
-La información logística se encuentra almacenada en el archivo:
-
-```text
-kaismart_eventos_logisticos.xlsx
-```
-
-Este archivo contiene aproximadamente **50.000 registros de eventos logísticos**.
-
-Ambas fuentes comparten la variable:
-
-```text
-pedido_id
-```
-
-Esta variable permite realizar posteriormente la integración entre la información comercial y logística.
-
----
 
 ## 🔄 Flujo general del proceso ETL
 
@@ -144,318 +51,82 @@ Esta variable permite realizar posteriormente la integración entre la informaci
               DEL PIPELINE
 ```
 
----
 
-## 🥉 Arquitectura Medallion
+## 1. Objetivo
+Extraer, explorar, limpiar e integrar dos fuentes de Kaismart Solutions con arquitectura **Medallion** (Bronze → Silver → Gold) en Python, y automatizar el pipeline con `schedule`.
 
-El proyecto utiliza una arquitectura de datos basada en tres capas.
+| Fuente | Origen | Tamaño |
+|---|---|---|
+| `df_ventas` | Tabla `ventas` en MySQL (base `clientes`) | 5.000 × 17 |
+| `df_logistica` | Excel `kaismart_eventos_logisticos.xlsx` | 50.000 × 14 |
 
-### 🥉 Bronze
+Ambas se unen por `pedido_id` (relación **1 venta : N eventos**, ~10 eventos por pedido).
 
-La capa Bronze conserva los datos obtenidos directamente desde las fuentes originales.
+## 2. Arquitectura Medallion
 
-Contiene los datos sin aplicar procesos de limpieza o transformación significativa.
+| Capa | Contenido | Carpeta |
+|---|---|---|
+| Bronze | Copia fiel de las fuentes, sin modificar | `data/bronze/` |
+| Silver | `df_ventas_transformado` y `df_logistica_transformado`: sin duplicados, fechas en `datetime`, nulos tratados, categorías estandarizadas | `data/silver/` |
+| Gold | Una fila por pedido: ventas + resumen logístico + indicadores | `data/gold/` |
+| Reportes | Log de cada decisión de limpieza (problema, cantidad, acción, justificación) | `reports/decisiones_transformacion.csv` |
 
-```text
-data/
-└── bronze/
-    ├── ventas_raw.csv
-    └── logistica_raw.csv
+## 3. Estructura del proyecto
+
+```
+config.yaml                          # autores, conexión, rutas, hora del scheduler
+scheduler.py                         # orquestador con schedule (Parte 8)
+etl/                                 # extract, profiling (EDA), transform, pipeline
+notebooks/laboratorio_etl.ipynb      # Partes 1 a 8 y conclusiones
+data/                                # bronze / silver / gold / respaldo
+reports/                             # decisiones de transformación
 ```
 
-### 🥈 Silver
+## 4. Hallazgos de `df_ventas`
+1. 5.000 ventas (ene–jun 2026), 5.000 pedidos únicos, 2.292 clientes; **0 duplicados**.
+2. Nulos **estructurales**, no errores: `id_tienda` 70,0 % (solo existe en tienda física) y `calificacion_cliente` 43,4 % (opcional).
+3. Las cuentas cuadran al 100 %: `valor_bruto = cantidad × precio_unitario` y `valor_neto = bruto − descuento`.
+4. Bogotá concentra el 33 % de las ventas y la web el 40 %; Tecnología lidera en número de ventas, pero **Deportes en valor neto**.
+5. `valor_neto` sesgado a la derecha (media 633.695 vs mediana 367.110). Cada producto aparece con 5 precios unitarios distintos (a validar con comercial).
 
-La capa Silver contiene los datos después de aplicar los procesos de limpieza y transformación necesarios.
+## 5. Hallazgos de `df_logistica`
+1. 50.000 eventos para 5.000 pedidos: la fila es un **evento**, no un pedido.
+2. **99 filas duplicadas exactas** y 100 `evento_id` repetidos → quedan 49.900 eventos únicos.
+3. Columna basura de Excel (`Unnamed: 13`) y fechas almacenadas como texto.
+4. Nulos normales del proceso: `incidencia` (98,98 %), `observacion` (96,55 %), `transportadora`/`numero_guia` antes del despacho (~60 %) y `tiempo_etapa_horas` en el primer evento (10 %). Nulos que sí son error: ciudad, CEDI, fecha prometida y fecha del evento (0,09 %–0,18 %).
+5. `costo_envio` no depende de la ciudad (~13.500 en las 6) y ~25 % de los pedidos tiene un recargo del 10 %; solo ~1 % de los eventos tiene incidencia.
 
-Entre los tratamientos considerados se encuentran:
+## 6. Decisiones de transformación
+- **Duplicados:** se eliminan las copias exactas; ante un `evento_id` repetido se conserva la fila más completa.
+- **Fechas:** `fecha_evento` nula (65) se reconstruye con la fecha de venta (10 casos) o con el evento anterior + `tiempo_etapa_horas` (55 casos), en lugar de inventarla con media o mediana.
+- **Atributos fijos por pedido** (ciudad, CEDI, fecha prometida) y 140 valores de transportadora/guía posteriores al despacho: se recuperan desde el mismo pedido.
+- **Nulos con significado:** se mantienen (`tiempo_etapa_horas` en "Pedido recibido", transportadora antes del despacho, `calificacion_cliente`) o se rotulan (`NO APLICA`, `SIN INCIDENCIA`, `SIN OBSERVACIÓN`).
+- **Gold:** unión `one_to_one` por `pedido_id` con `n_eventos`, `entrega_a_tiempo`, `dias_hasta_entrega`, `n_incidencias`, `pedido_completo`, `valor_neto_mas_envio`, entre otros.
 
-* Manejo de valores nulos.
-* Eliminación de duplicados cuando corresponda.
-* Estandarización de categorías.
-* Corrección de tipos de datos.
-* Transformaciones necesarias para el análisis.
-* Tratamiento de inconsistencias identificadas durante el EDA.
+## 7. Validación cruzada y resultados
+- Los 5.000 pedidos cruzan 1 a 1 y la ciudad de la venta coincide con la de destino en el **100 %**.
+- 98 pedidos tienen el ciclo incompleto (96 con 9 estados y 2 con 8) y 10 no registran evento "Entregado".
+- **82,9 %** de las entregas cumple la fecha prometida; el desempeño entre transportadoras es casi igual (82,1 %–83,5 %).
+- Mediana de 1,45 días desde el primer evento hasta la entrega.
 
-Las decisiones de imputación se realizan teniendo en cuenta el significado de cada variable y no de manera automática.
+## 8. Automatización (Parte 8)
+`scheduler.py` programa el pipeline completo con `schedule` (diario a las 02:00, configurable en `config.yaml`), escribe el log en `logs/etl.log` y no se detiene si una ejecución falla.
 
-```text
-data/
-└── silver/
-    ├── ventas_silver.csv
-    └── logistica_silver.csv
+## 9. Cómo ejecutarlo
+
+```bash
+git clone https://github.com/JSebasurb/kaismart_etl.git
+cd kaismart_etl
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt ipykernel
+
+python scheduler.py --una-vez     # ejecuta el ETL una vez
+python scheduler.py               # deja el orquestador activo (diario)
 ```
 
-### 🥇 Gold
+Notebook: abrir `notebooks/laboratorio_etl.ipynb`, seleccionar el kernel `.venv` y ejecutar **Run All**.
 
-La capa Gold contiene los datos preparados para análisis, después de realizar la integración entre las fuentes comercial y logística.
-
-La integración utiliza como elemento común:
-
-```text
-pedido_id
-```
-
-```text
-data/
-└── gold/
-    └── pedidos_gold.csv
-```
-
----
-
-## 📊 Exploración y análisis de datos
-
-Antes de realizar transformaciones, se realiza un proceso de **Exploratory Data Analysis (EDA)** sobre cada fuente de manera independiente.
-
-Para cada DataFrame se analizan aspectos como:
-
-* Número de registros.
-* Número de variables.
-* Nombres de las variables.
-* Tipos de datos.
-* Registros no nulos.
-* Variables identificadoras.
-* Variables categóricas.
-* Variables numéricas.
-* Variables asociadas con fechas y tiempos.
-* Rango de fechas cuando sea posible.
-* Características generales de calidad.
-
-Los principales DataFrames utilizados durante la extracción son:
-
-```python
-df_ventas
-df_logistica
-```
-
-Posteriormente se generan los DataFrames transformados:
-
-```python
-df_ventas_transformado
-df_logistica_transformado
-```
-
----
-
-## 🔎 Perfil de calidad de los datos
-
-El perfil inicial de calidad permite identificar y cuantificar posibles problemas presentes en las fuentes.
-
-### Valores nulos
-
-Para cada variable se determina:
-
-* Cantidad de valores nulos.
-* Porcentaje de valores nulos.
-* Variables con mayor proporción de datos faltantes.
-* Posibles causas de los valores faltantes.
-
-Durante esta etapa los valores nulos se identifican y analizan, pero no se modifican hasta la etapa de transformación.
-
-### Valores únicos
-
-Se utiliza `nunique()` para analizar:
-
-* Cardinalidad.
-* Variables con alta cardinalidad.
-* Variables con baja cardinalidad.
-* Posibles identificadores.
-* Variables categóricas con pocos valores.
-
-Se presta especial atención a:
-
-```text
-id_venta
-pedido_id
-evento_id
-```
-
-### Duplicados
-
-Se revisan:
-
-* Filas completamente duplicadas.
-* Identificadores que deberían ser únicos.
-* Registros repetidos.
-
-Los duplicados encontrados son documentados antes de decidir el tratamiento correspondiente.
-
-### Tipos de datos
-
-Se verifica la coherencia entre el tipo de dato detectado por Python y el significado de cada variable.
-
-Se presta especial atención a:
-
-* Fechas.
-* Identificadores.
-* Variables monetarias.
-* Variables numéricas.
-* Variables categóricas.
-
----
-
-## 📈 Análisis descriptivo
-
-El proyecto contempla un análisis descriptivo independiente de las fuentes antes de realizar la integración.
-
-Para las variables numéricas se consideran indicadores como:
-
-* `count`
-* `mean`
-* `std`
-* `min`
-* Percentil 25
-* Mediana
-* Percentil 75
-* `max`
-
-También se analizan las variables categóricas mediante:
-
-* Número de valores únicos.
-* Categorías existentes.
-* Frecuencia de cada categoría.
-* Categoría más frecuente.
-
-### Información de ventas
-
-Para `df_ventas` se analizan, entre otros:
-
-* Ventas por ciudad.
-* Ventas por canal.
-* Ventas por categoría.
-* Cantidad de productos vendidos.
-* `precio_unitario`.
-* `valor_bruto`.
-* `valor_descuento`.
-* `valor_neto`.
-* `calificacion_cliente`.
-
-### Información logística
-
-Para `df_logistica` se analizan, entre otros:
-
-* Eventos por `estado_evento`.
-* Eventos por `ciudad_destino`.
-* Frecuencia de transportadoras.
-* Frecuencia de incidencias.
-* `tiempo_etapa_horas`.
-* `costo_envio`.
-
----
-
-## 💼 Preguntas de negocio
-
-Como parte del análisis inicial se plantean y responden **10 preguntas de negocio** utilizando los datos originales.
-
-Estas preguntas buscan aprovechar las capacidades de análisis de `pandas` para obtener información relevante a partir de las fuentes disponibles.
-
-Las preguntas y respuestas serán documentadas dentro del análisis del proyecto.
-
----
-
-## 🧹 Proceso de transformación
-
-A partir de los problemas identificados durante el EDA se desarrolla el proceso de limpieza y transformación.
-
-Los tratamientos pueden incluir:
-
-* Imputación de valores faltantes.
-* Eliminación de duplicados.
-* Estandarización de categorías.
-* Conversión de tipos de datos.
-* Tratamiento de inconsistencias.
-* Creación o modificación de variables cuando sea necesario.
-* Preparación de los datos para la integración.
-
-Las estrategias de imputación se seleccionan de acuerdo con las características de cada variable.
-
-Entre las alternativas consideradas se encuentran:
-
-* **Mediana:** para variables numéricas con presencia de valores atípicos.
-* **Media:** cuando la distribución de la variable lo permita.
-* **Moda:** para variables categóricas.
-* **"NO INFORMADO":** cuando sea apropiado.
-* **Mantener el nulo:** cuando represente una situación válida del proceso.
-
----
-
-## ⚙️ Automatización del ETL
-
-El pipeline ETL será automatizado utilizando la librería:
-
-```text
-Schedule
-```
-
-El objetivo es establecer un proceso que permita ejecutar de manera programada las diferentes etapas del pipeline ETL.
-
-El proceso contempla las etapas principales de:
-
-```text
-Extracción
-     ↓
-Transformación
-     ↓
-Integración
-     ↓
-Generación de datos procesados
-```
-
-La automatización forma parte del alcance establecido para el laboratorio.
-
----
-
-## 🛠️ Tecnologías utilizadas
-
-Las principales tecnologías y herramientas utilizadas son:
-
-| Tecnología       | Uso                                   |
-| ---------------- | ------------------------------------- |
-| Python           | Desarrollo del proceso ETL            |
-| Pandas           | Manipulación y análisis de datos      |
-| MySQL            | Fuente de datos comerciales           |
-| Excel            | Fuente de datos logísticos            |
-| Schedule         | Automatización del pipeline           |
-| YAML             | Configuración del proyecto            |
-| Jupyter Notebook | Exploración y análisis de datos       |
-| Git              | Control de versiones                  |
-| GitHub           | Gestión y publicación del repositorio |
-
----
-
-## 📁 Estructura del repositorio
-
-```text
-lab2-etl/
-│
-├── README.md
-├── config.yaml
-├── requirements.txt
-│
-├── data/
-│   ├── bronze/
-│   │   ├── ventas_raw.csv
-│   │   └── logistica_raw.csv
-│   │
-│   ├── silver/
-│   │   ├── ventas_silver.csv
-│   │   └── logistica_silver.csv
-│   │
-│   └── gold/
-│       └── pedidos_gold.csv
-│
-├── etl/
-│   ├── __init__.py
-│   ├── extraction.py
-│   ├── transformation.py
-│   ├── quality.py
-│   └── pipeline.py
-│
-├── notebooks/
-│   └── EDA.ipynb
-│
-└── reports/
-    └── informe.md
-```
+Si no hay conexión a MySQL (`107.180.112.11`), el pipeline usa el CSV de `data/respaldo/ventas_mysql_export.csv` (parámetro `ventas_csv_respaldo` en `config.yaml`) y lo deja registrado en el log.
 
 >
